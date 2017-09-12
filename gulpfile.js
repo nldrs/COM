@@ -53,7 +53,7 @@ var cleanAll={
 var dist = {
     root:'./dist',
     images:'dist/images/',
-    js:'dist/js/',
+    js:'dist/js/'
 };
 var src = {
     root:'./src',
@@ -64,6 +64,7 @@ var ver={
     root:"./rev/",
     src:"./rev/**/*.json",
     css:"./rev/css/",
+    html:"./rev/html/",
     js:"./rev/js/",
     img:"./rev/images/"
 };
@@ -113,12 +114,12 @@ gulp.task("moveLib",function(){
         .pipe(changed(src.root+"/lib/**/*"))
         .pipe(gulp.dest(dist.root+"/lib"))
         .pipe(reload({stream: true}))
-        .pipe(notify("lib移动==>dist==>>完成 ^_^ [<%= file.relative %>]"))
+        .pipe(notify("moveLib移动==>dist==>>完成 ^_^ [<%= file.relative %>]"))
 });
 gulp.task("moveFonts",function(){
     return gulp.src(src.root+"/fonts/**/*")
         .pipe(gulp.dest(dist.root+"/fonts"))
-        .pipe(notify("fonts==>dist==>>完成 ^_^ [<%= file.relative %>]"))
+        .pipe(notify("moveFonts==>dist==>>完成 ^_^ [<%= file.relative %>]"))
 });
 gulp.task("moveApp",function(){
     return gulp.src(src.root+"/app/*.js")
@@ -127,7 +128,7 @@ gulp.task("moveApp",function(){
         .pipe(jshInt.reporter()) // 输出检查结果
         .pipe(gulp.dest(dist.root+"/app"))
         .pipe(reload({stream: true}))
-        .pipe(notify("js校验==>dist==>>完成 ^_^ [<%= file.relative %>]"))
+        .pipe(notify("moveApp==>dist==>>完成 ^_^ [<%= file.relative %>]"))
 });
 gulp.task("moveImg",function () {
     return gulp.src(src.root+"/images/**/*")
@@ -171,7 +172,16 @@ gulp.task("test",function (callback) {
 });
 
 /*****部署项目做得版本*****/
-
+gulp.task("revHtml",function(){
+    return gulp.src(src.root+"/*.html")
+        .pipe(changed(src.root+"/*.html"))
+        .pipe(rev())
+        .pipe(gulp.dest(dist.root))
+        .pipe(reload({stream: true}))
+        .pipe(rev.manifest()) //生成一个rev-manifest.json
+        .pipe(gulp.dest(ver.html))
+        .pipe(notify("revHtml==>dist==>做版本完成 ^_^ [<%= file.relative %>]"))
+});
 gulp.task("revImg",function () {
     return gulp.src(src.root+"/images/**/*")
         .pipe(changed(src.root+"/images/**/*"))
@@ -189,15 +199,17 @@ gulp.task("revImg",function () {
         .pipe(gulp.dest(ver.img))
         .pipe(notify("revImg ==>> dist 做版本完成 ^_^ [<%= file.relative %>]"))
 });
-gulp.task("revScss",function () {
+gulp.task("revScss1",function () {
     var processors = [autoprefixer, cssnext, precss];
-    gulp.src([src.root+"/css/*.css",'!'+src.root+"/css/webStyle.css"])
+    return gulp.src([src.root+"/css/*.css",'!'+src.root+"/css/webStyle.css"])
         .pipe(postcss(processors))
         .pipe(base64({
             maxImageSize:1*1024,
             debug:true
         }));
-    gulp.src(src.root+"/css/**/*")
+});
+gulp.task("revScss2",function () {
+    return gulp.src(src.root+"/css/**/*")
         .pipe(css0())
         .pipe(rename(function (path) {
             path.basename+=".min";
@@ -208,10 +220,10 @@ gulp.task("revScss",function () {
         .pipe(reload({stream: true}))
         .pipe(rev.manifest()) //生成一个rev-manifest.json
         .pipe(gulp.dest(ver.css))
-        .pipe(notify("compass==>hack==>dist==>做版本完成 ^_^ [<%= file.relative %>]"))
+        .pipe(notify("compass==>hack==>dist==>做版本完成 ^_^ [<%= file.relative %>]"));
 });
 gulp.task("revCss",function (callback) {
-    gulpSequence("compass","revScss")(callback);
+    gulpSequence("compass","revScss1","revScss2")(callback);
 });
 gulp.task("revJs",function () {
     return gulp.src(src.root+"/app/*.js")
@@ -224,40 +236,39 @@ gulp.task("revJs",function () {
         .pipe(reload({stream: true}))
         //.pipe(rev.manifest()) //生成一个rev-manifest.json
        // .pipe(gulp.dest(ver.js))
-        .pipe(notify("js==>压缩==>dist==>做版本完成 ^_^ [<%= file.relative %>]"))
+        .pipe(notify("revJs==>dist==>做版本完成 ^_^ [<%= file.relative %>]"))
 });
 gulp.task("revCopy",function(){
     return gulp.src([src.root+"/*.{html,js}",src.root+"/fonts/**/*",src.root+"/lib/**/*"],{base: './src'})
         .pipe(gulp.dest(dist.root))
         .pipe(reload({stream: true}))
-        .pipe(notify("html==>dist==>> 做版本完成 ^_^ [<%= file.relative %>]"))
+        .pipe(notify("revCopy==>dist==>> 做版本完成 ^_^ [<%= file.relative %>]"))
 });
 /*做版本*/
 gulp.task("rev",function () {
     return gulp.src([ver.src,src.root+"/*.html"])
-        .pipe(changed(src.root+"/*.html"))
         .pipe(gulpcollector({replaceReved:true}))
         //.pipe(minifyHtml({empty:true,spare:true,quotes:true}))
         .pipe(gulp.dest(dist.root))
         .pipe(reload({stream: true}))
-        .pipe(notify("html页面刷新完成==>>dist 做版本完成 ^_^  [<%= file.relative %>]"))
+        .pipe(notify("rev做版本完成 ^_^  [<%= file.relative %>]"))
 });
 //***更改sass文件中版本的引用***//
 gulp.task("revcollectorcss",function () {
-    return gulp.src([ver.src,src.root+"/sass/*.scss"])
+    return gulp.src([ver.src,dist.root+"/css/*.min.css"])
         .pipe(gulpcollector({replaceReved:true}))
         .pipe(gulp.dest(dist.root+"/css/"))
         .pipe(reload({stream: true}))
 });
 //***更改js文件中版本的引用***//
 gulp.task("revcollectorjs",function () {
-    return gulp.src([ver.src,src.root+"/js/*.js"])
+    return gulp.src([ver.src,dist.root+"/js/*.js"])
         .pipe(gulpcollector({replaceReved:true}))
         .pipe(gulp.dest(dist.root+"/js/"))
         .pipe(reload({stream: true}))
 });
-gulp.task("paying",function (callback) {
-    gulpSequence(["revCopy","revImg","revcollectorcss","revcollectorjs"],"revCss","revJs","rev")(callback)
+gulp.task("playing",function (callback) {
+    gulpSequence(["revCopy","revImg"],"revCss","revJs","revcollectorcss","revcollectorjs","rev")(callback)
 });
 
 // ******生产环境的服务器********//
@@ -271,12 +282,12 @@ gulp.task('Dbrowser',function() {
     });
 });
 gulp.task("one",function (callback) {
-    gulpSequence("revcollectorcss","revCss","rev",callback)
+    gulpSequence("revCss","revcollectorcss","rev")(callback)
 });
 gulp.task("two",function (callback) {
-    gulpSequence("revcollectorjs","revJs","rev",callback)
+    gulpSequence("revJs","revcollectorjs","rev")(callback)
 });
-gulp.task('three',["Dbrowser","paying"],function () {
+gulp.task('running',["playing","Dbrowser"],function () {
     gulp.watch(src.root+"/sass/**/*", ["one"]);
     gulp.watch(src.root+"/*.html",['rev']);
     gulp.watch(src.root+"/js/**/*", ["two"]);
